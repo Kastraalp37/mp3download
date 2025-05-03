@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube MP3 İndirici</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .progress {
+            height: 25px;
+        }
+        .history-item {
+            border-bottom: 1px solid #dee2e6;
+            padding: 10px 0;
+            transition: border-color 0.3s ease;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .signature {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6c757d;
+            font-style: italic;
+            transition: color 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] body {
+            background-color: #212529;
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .card {
+            background-color: #343a40;
+            border-color: #495057;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        [data-bs-theme="dark"] a {
+            color: #6ea8fe;
+        }
+        [data-bs-theme="dark"] a:hover {
+            color: #8bb9fe;
+        }
+        [data-bs-theme="dark"] .history-item {
+            border-bottom-color: #495057;
+        }
+        [data-bs-theme="dark"] .status-message.success {
+            background-color: #0f5132;
+            color: #d1e7dd;
+        }
+        [data-bs-theme="dark"] .status-message.error {
+            background-color: #842029;
+            color: #f8d7da;
+        }
+        [data-bs-theme="dark"] .signature {
+            color: #adb5bd;
+        }
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-control:focus {
+            background-color: #495057;
+            color: #dee2e6;
+            border-color: #6c757d;
+        }
+        [data-bs-theme="dark"] .form-control::placeholder {
+            color: #adb5bd;
+        }
+        [data-bs-theme="dark"] .input-group .btn-outline-secondary {
+             border-color: #6c757d;
+             color: #adb5bd;
+        }
+        [data-bs-theme="dark"] .input-group .btn-outline-secondary:hover {
+             background-color: #6c757d;
+             color: #fff;
+        }
+        [data-bs-theme="dark"] .text-muted {
+             color: #adb5bd !important;
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn btn-secondary" id="theme-toggle" type="button">
+        <i class="bi bi-moon-stars-fill"></i>
+    </button>
+
+    <div class="container">
+        <h1 class="text-center mb-4">YouTube MP3 İndirici</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Video URL'leri</h5>
+                        <p class="card-text text-muted">Her satıra bir URL gelecek şekilde YouTube linklerini girin</p>
+                        <form id="downloadForm">
+                            <div class="mb-3">
+                                <textarea class="form-control" id="urls" rows="5" placeholder="https://www.youtube.com/watch?v=..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="downloadPath" class="form-label">İndirme Konumu</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="downloadPath" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" id="selectFolder">Klasör Seç</button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="downloadBtn">İndirmeyi Başlat</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">İndirme Durumu</h5>
+                        <div id="progressContainer" style="display: none;">
+                            <div class="progress mb-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="statusMessage" class="status-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">İndirme Geçmişi</h5>
+                            <button class="btn btn-danger btn-sm" id="clearHistory" style="display: none;">Tümünü Temizle</button
+                        </div>
+                        <div id="historyList">
+                            <!-- Geçmiş buraya dinamik olarak eklenecek -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Github Adresimiz</h5>
+                        <p class="card-text">
+                            <a href="https://github.com/Kastraalp37" target="_blank" class="text-decoration-none">
+                                <i class="bi bi-github"></i> https://github.com/Kastraalp37
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="signature">
+            by Alptuğrul Özdemir
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        const moonIcon = 'bi-moon-stars-fill';
+        const sunIcon = 'bi-sun-fill';
+
+        function applyTheme(theme) {
+            htmlElement.setAttribute('data-bs-theme', theme);
+            themeToggle.querySelector('i').className = theme === 'dark' ? sunIcon : moonIcon;
+            localStorage.setItem('theme', theme);
+        }
+
+        const preferredTheme = localStorage.getItem('theme') || 
+                              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        applyTheme(preferredTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = htmlElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+
+        document.getElementById('selectFolder').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/select-folder', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.path) {
+                    document.getElementById('downloadPath').value = data.path;
+                } else if (data.error) {
+                     console.error('Klasör seçimi sunucu hatası:', data.error);
+                     alert(`Klasör seçilemedi: ${data.error}`);
+                } else {
+                     console.warn('Klasör seçilmedi veya işlem iptal edildi.');
+                }
+            } catch (error) {
+                console.error('Klasör seçimi ağ hatası:', error);
+                alert('Klasör seçimi sırasında bir hata oluştu.');
+            }
+        });
+
+        document.getElementById('downloadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const urls = document.getElementById('urls').value;
+            const downloadPath = document.getElementById('downloadPath').value;
+            const downloadBtn = document.getElementById('downloadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.querySelector('.progress-bar');
+            const statusMessage = document.getElementById('statusMessage');
+
+            if (!downloadPath) {
+                alert('Lütfen bir indirme konumu seçin.');
+                return;
+            }
+
+            if (!urls.trim()) {
+                alert('Lütfen en az bir YouTube URL\'si girin.');
+                return;
+            }
+
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> İndiriliyor...';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.classList.remove('bg-success', 'bg-danger');
+            statusMessage.textContent = 'İndirme başlatılıyor...';
+            statusMessage.className = 'status-message';
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `urls=${encodeURIComponent(urls)}&path=${encodeURIComponent(downloadPath)}`
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                     throw new Error(data.error || `Sunucu hatası: ${response.status}`);
+                }
+
+                const checkStatus = async () => {
+                    try {
+                        const statusResponse = await fetch('/status');
+                        if (!statusResponse.ok) {
+                            throw new Error(`Durum kontrolü hatası: ${statusResponse.status}`);
+                        }
+                        const statusData = await statusResponse.json();
+
+                        progressBar.style.width = `${statusData.progress || 0}%`;
+                        statusMessage.textContent = statusData.message || 'Durum bekleniyor...';
+
+                        if (statusData.status === 'processing') {
+                            setTimeout(checkStatus, 1000);
+                        } else if (statusData.status === 'completed') {
+                            progressBar.style.width = '100%';
+                            progressBar.classList.add('bg-success');
+                            statusMessage.className = 'status-message success';
+                            downloadBtn.disabled = false;
+                            downloadBtn.innerHTML = 'İndirmeyi Başlat';
+                            await updateHistory();
+                        } else if (statusData.status === 'error') {
+                             progressBar.style.width = '100%';
+                             progressBar.classList.add('bg-danger');
+                             statusMessage.textContent = `Hata: ${statusData.message}`;
+                             statusMessage.className = 'status-message error';
+                             downloadBtn.disabled = false;
+                             downloadBtn.innerHTML = 'İndirmeyi Başlat';
+                        } else {
+                            setTimeout(checkStatus, 1500);
+                        }
+                    } catch(statusError) {
+                         console.error("Durum kontrol hatası:", statusError);
+                         statusMessage.textContent = `Durum bilgisi alınamadı: ${statusError.message}`;
+                         statusMessage.className = 'status-message error';
+                         downloadBtn.disabled = false;
+                         downloadBtn.innerHTML = 'İndirmeyi Başlat';
+                    }
+                };
+
+                setTimeout(checkStatus, 500);
+
+            } catch (error) {
+                console.error("İndirme başlatma hatası:", error);
+                statusMessage.textContent = `Hata: ${error.message}`;
+                statusMessage.className = 'status-message error';
+                progressBar.style.width = '100%';
+                progressBar.classList.add('bg-danger');
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = 'İndirmeyi Başlat';
+            }
+        });
+
+        async function updateHistory() {
+            try {
+                const response = await fetch('/history');
+                 if (!response.ok) {
+                      throw new Error(`Geçmiş alınamadı: ${response.status}`);
+                 }
+                const history = await response.json();
+                const historyList = document.getElementById('historyList');
+                const clearButton = document.getElementById('clearHistory');
+
+                historyList.innerHTML = history.map(item => `
+                    <div class="history-item">
+                        <h6>${item.title || 'Başlık Yok'}</h6>
+                        <small class="text-muted">${item.url}</small>
+                        <br>
+                        <small class="text-muted">${new Date(item.date).toLocaleString()}</small>
+                    </div>
+                `).join('');
+
+                if (clearButton) {
+                    clearButton.style.display = history.length > 0 ? 'block' : 'none';
+                }
+            } catch (error) {
+                 console.error("Geçmiş güncellenirken hata oluştu:", error);
+            }
+        }
+
+        const clearHistoryButton = document.getElementById('clearHistory');
+        if (clearHistoryButton) {
+            clearHistoryButton.addEventListener('click', async () => {
+                if (confirm('İndirme geçmişini temizlemek istediğinizden emin misiniz?')) {
+                    try {
+                        const response = await fetch('/clear-history', {
+                            method: 'POST'
+                        });
+                         if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Geçmiş temizlenemedi: ${response.status}`);
+                         }
+                        const data = await response.json();
+                        if (data.success) {
+                            document.getElementById('historyList').innerHTML = '';
+                            clearHistoryButton.style.display = 'none';
+                        } else {
+                           alert('Geçmiş temizlenemedi: ' + (data.error || 'Bilinmeyen sunucu hatası'));
+                        }
+                    } catch (error) {
+                        console.error('Geçmiş temizleme hatası:', error);
+                        alert('Geçmiş temizlenirken bir hata oluştu: ' + error.message);
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+             updateHistory();
+        });
+
+    </script>
+</body>
+</html> 

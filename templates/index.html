@@ -131,13 +131,6 @@
                             <div class="mb-3">
                                 <textarea class="form-control" id="urls" rows="5" placeholder="https://www.youtube.com/watch?v=..."></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label for="downloadPath" class="form-label">İndirme Konumu</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="downloadPath" readonly>
-                                    <button class="btn btn-outline-secondary" type="button" id="selectFolder">Klasör Seç</button>
-                                </div>
-                            </div>
                             <button type="submit" class="btn btn-primary" id="downloadBtn">İndirmeyi Başlat</button>
                         </form>
                     </div>
@@ -198,6 +191,31 @@
         const moonIcon = 'bi-moon-stars-fill';
         const sunIcon = 'bi-sun-fill';
 
+        // --- LOCALSTORAGE GEÇMİŞ FONKSİYONLARI ---
+        function saveHistoryToLocal(history) {
+            localStorage.setItem('downloadHistory', JSON.stringify(history));
+        }
+        function getHistoryFromLocal() {
+            const data = localStorage.getItem('downloadHistory');
+            return data ? JSON.parse(data) : [];
+        }
+        function renderHistoryFromLocal() {
+            const history = getHistoryFromLocal();
+            const historyList = document.getElementById('historyList');
+            const clearButton = document.getElementById('clearHistory');
+            historyList.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <h6>${item.title || 'Başlık Yok'}</h6>
+                    <small class="text-muted">${item.url}</small>
+                    <br>
+                    <small class="text-muted">${new Date(item.date).toLocaleString()}</small>
+                </div>
+            `).join('');
+            if (clearButton) {
+                clearButton.style.display = history.length > 0 ? 'block' : 'none';
+            }
+        }
+
         function applyTheme(theme) {
             htmlElement.setAttribute('data-bs-theme', theme);
             themeToggle.querySelector('i').className = theme === 'dark' ? sunIcon : moonIcon;
@@ -213,39 +231,13 @@
             applyTheme(newTheme);
         });
 
-        document.getElementById('selectFolder').addEventListener('click', async () => {
-            try {
-                const response = await fetch('/select-folder', {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                if (data.path) {
-                    document.getElementById('downloadPath').value = data.path;
-                } else if (data.error) {
-                     console.error('Klasör seçimi sunucu hatası:', data.error);
-                     alert(`Klasör seçilemedi: ${data.error}`);
-                } else {
-                     console.warn('Klasör seçilmedi veya işlem iptal edildi.');
-                }
-            } catch (error) {
-                console.error('Klasör seçimi ağ hatası:', error);
-                alert('Klasör seçimi sırasında bir hata oluştu.');
-            }
-        });
-
         document.getElementById('downloadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const urls = document.getElementById('urls').value;
-            const downloadPath = document.getElementById('downloadPath').value;
             const downloadBtn = document.getElementById('downloadBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.querySelector('.progress-bar');
             const statusMessage = document.getElementById('statusMessage');
-
-            if (!downloadPath) {
-                alert('Lütfen bir indirme konumu seçin.');
-                return;
-            }
 
             if (!urls.trim()) {
                 alert('Lütfen en az bir YouTube URL\'si girin.');
@@ -266,7 +258,7 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `urls=${encodeURIComponent(urls)}&path=${encodeURIComponent(downloadPath)}`
+                    body: `urls=${encodeURIComponent(urls)}`
                 });
 
                 const data = await response.json();
@@ -329,27 +321,14 @@
         async function updateHistory() {
             try {
                 const response = await fetch('/history');
-                 if (!response.ok) {
-                      throw new Error(`Geçmiş alınamadı: ${response.status}`);
-                 }
-                const history = await response.json();
-                const historyList = document.getElementById('historyList');
-                const clearButton = document.getElementById('clearHistory');
-
-                historyList.innerHTML = history.map(item => `
-                    <div class="history-item">
-                        <h6>${item.title || 'Başlık Yok'}</h6>
-                        <small class="text-muted">${item.url}</small>
-                        <br>
-                        <small class="text-muted">${new Date(item.date).toLocaleString()}</small>
-                    </div>
-                `).join('');
-
-                if (clearButton) {
-                    clearButton.style.display = history.length > 0 ? 'block' : 'none';
+                if (!response.ok) {
+                    throw new Error(`Geçmiş alınamadı: ${response.status}`);
                 }
+                const history = await response.json();
+                saveHistoryToLocal(history); // localStorage'a kaydet
+                renderHistoryFromLocal();    // localStorage'dan göster
             } catch (error) {
-                 console.error("Geçmiş güncellenirken hata oluştu:", error);
+                console.error("Geçmiş güncellenirken hata oluştu:", error);
             }
         }
 
@@ -361,13 +340,14 @@
                         const response = await fetch('/clear-history', {
                             method: 'POST'
                         });
-                         if (!response.ok) {
+                        if (!response.ok) {
                             const errorData = await response.json().catch(() => ({}));
                             throw new Error(errorData.error || `Geçmiş temizlenemedi: ${response.status}`);
-                         }
+                        }
                         const data = await response.json();
                         if (data.success) {
-                            document.getElementById('historyList').innerHTML = '';
+                            localStorage.removeItem('downloadHistory'); // localStorage'dan da sil
+                            renderHistoryFromLocal();
                             clearHistoryButton.style.display = 'none';
                         } else {
                            alert('Geçmiş temizlenemedi: ' + (data.error || 'Bilinmeyen sunucu hatası'));
@@ -381,7 +361,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-             updateHistory();
+            renderHistoryFromLocal(); // Sayfa yüklenince localStorage'dan göster
+            updateHistory(); // Sunucudan da çekip localStorage'a kaydet
         });
 
     </script>

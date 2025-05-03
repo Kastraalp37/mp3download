@@ -1,26 +1,23 @@
-# Python 3.9 base image kullan
-FROM python:3.9-slim
+# Python 3.11 slim tabanlı küçük bir imaj kullan
+FROM python:3.11-slim
 
-# Çalışma dizinini ayarla
+# Çalışma dizini
 WORKDIR /app
 
-# Gerekli sistem paketlerini yükle
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# Gerekli sistem paketlerini yükle (yt-dlp için ffmpeg gerekir)
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
 
-# Gerekli Python paketlerini kopyala ve yükle
+# Gereksinimleri yükle
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Uygulama dosyalarını kopyala
 COPY . .
 
-# İndirme dizinini oluştur
-RUN mkdir -p downloads
+# 8000 portunu aç
+EXPOSE 8000
 
-# Port ayarı
-EXPOSE 5000
-
-# Uygulamayı çalıştır
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"] 
+# Uygulamayı başlat
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
